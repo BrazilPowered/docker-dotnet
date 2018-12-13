@@ -440,8 +440,10 @@ docker image build -t signup-homepage:v1 /docker/homepage
 
 Now, we modify our docker-compose file to use this new component
 
-Take a look at the the compose files we had at the end of our last lab. The
-<a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose-local.yml" target="_blank">first, docker-compose-local.yml</a>, sets up the details for the services, including things like port numbers accessible to the outside world... but we don't need any of those for this image. Our Web-App already has external network access, and it has the codebehind controller to route traffic to this container. We only need to add this new service to <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose.yml" target="_blank">the second, docker-compose.yml</a>, to name the service and tell it to access the app-net network so that codebehind controller can communicate with it.
+Take a look at the the compose files we had after the end of the last lab. The
+<a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose-local.yml" target="_blank">first, docker-compose-local.yml</a>, sets up the details for the services, including things like port numbers accessible to the outside world... but we don't need any of those for this image. Our Web-App already has external network access, and it has the codebehind controller to route traffic to this container. We only need to add this new service to <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">the second, docker-compose.yml</a>, to name the service and tell it to access the app-net network so that codebehind controller can communicate with it.
+
+Adding this at the bottom of the second docker-compose.yml file should accomplish what we need:
 
 ```YAML
   signup-homepage:
@@ -461,15 +463,13 @@ docker-compose `
 
 You'll see that a new homepage container gets started, and the web app container gets replaced with a new container. 
 
-> There may be some other containers started too, they're part of the [MTA .NET video series](https://blog.docker.com/2018/02/video-series-modernizing-net-apps-developers/), and you can ignore them for now.
+The new version is available on your same Windows Docker host. Navigate to the webpage on your Windows server through your web browser just as before.
 
-The new version is available on your same Windows Docker host. Browse to the Windows server as before - using the hostname from _Session Information_.
-
-Now when the ASP.NET web container receives a request, it calls out to the homepage container which renders the new homepage. That new homepage is a modern UI written in Vue.js:
+Now when the ASP.NET web container receives a request, it calls out to the homepage container across the docker app-net netwoprk which renders the new homepage. That new homepage is a modern UI written in Vue.js:
 
 ![Part 5 app homepage](./images/part-5-homepage.JPG)
 
-If the product team don't like the new UI, they can easily replace it by building a new homepage and replacing the homepage container. The web app container doesn't need to change, so there are no regression tests to run.
+If the product team doesn't like the new UI, they can easily replace it by building a new homepage and replacing the homepage container. The web app container doesn't need to change, so there are no regression tests to run.
 
 > The app has a modern architecture now, powered by Docker and without needing a full rewrite. You've extracted key features from the app and run them in separate containers, using Docker to plug everything together, and to give you a consistent build and deployment process for the whole solution.
 
@@ -479,20 +479,20 @@ So far you've been running the application using Docker on the Windows node. Nex
 
 Now that the images are built, you'll push them to Docker Trusted Registry (DTR). DTR is the enterprise-grade image storage solution from Docker. You install it behind your firewall so that you can securely store and manage the Docker images you use in your applications and to make them available on Docker Universal Control Plane (UCP).  UCP is the enterprise-grade cluster management solution from Docker and it helps you manage your Docker cluster and applications through a single interface.
 
-Your lab environment already has DTR and UCP running. Your URL for DTR is in the Session Information panel, together with the password for the `admin` user to use. 
+Your lab environment already has DTR and UCP running. Your URL for DTR is provided by your instructor, and you should already have your account information to log in. 
 
-The DTR domain will be something like `ip172-18-0-22-bahe6raubbhg0095k710.direct.ee-beta2.play-with-docker.com`. To make it easier to work with, store that domain in an environment variable:
+The DTR domain will be something like `104.248.14.199:4443`. (Note: The DTR will not normally have a port number, so if yours does not, you can remove it here). To make it easier to work with, store that domain in an environment variable:
 
 ```
 $env:dtrDomain='<your-dtr-domain-name>'
 ```
 
-> Be sure to use your actual DTR domain name, which you can copy from the Session Panel.
+> Be sure to use your actual DTR domain name.
 
-Now log in in to your DTR instance with your `admin` credentials:
+Now log in in to your DTR instance with your provided credentials:
 
 ```
-docker login "$env:dtrDomain" --username admin
+docker login "$env:dtrDomain" --username <you-username>
 ```
 ![DTR login](./images/dtr-login.jpg)
 
@@ -503,10 +503,12 @@ Tag the new web homepage image you've built with a new name that includes the DT
 ```
 docker image tag `
   dockersamples/mta-dev-signup-homepage:v1 `
-  "$($env:dtrDomain)/dockersamples/mta-dev-signup-homepage:v1"
+  "$($env:dtrDomain)/<your-Organization-Name>/mta-dev-signup-homepage:v1"
 ```
 
-Next you need to create an organization to group image repositories for the images you want to store. First click on the `DTR` button the left sidebar and log into DTR using the same `admin` credentials in the Session Information panel (**ignore the security warnings - the lab environment uses self-signed HTTPS certificates**).
+Next you need to create an organization to group image repositories for the images you want to store. Skip this section if you have already done this.
+
+First click on the `DTR` button the left sidebar and log into DTR using your provided credentials. (**ignore the security warnings - the lab environment uses self-signed HTTPS certificates**).
 
 Click on the _Organizations_ link on the left-hand navigation, and then the _New organization_ button:
 
@@ -524,13 +526,13 @@ Click the _Add repository_ button and create a repository called `mta-dev-signup
 
 ![DTR - repository page](./images/dtr-new-repo-2.jpg)
 
-> Organizations and repositories in DTR give you fine-grained control over who can push and pull images. Your `admin` account has full access, but you could create a test team who only had access to pull images for testing.
+> Organizations and repositories in DTR give you fine-grained control over who can push and pull images. And `admin` account has full access, and an Organization Owner has full access to the resources belonging to that Org. For example, you could create a test team in a Testing Organization who only had access to pull images for testing.
 
-Images with your DTR domain in the tag will be pushed to your registry. Switch back to the lab environment and the Windows terminal. You have already logged in as the `admin` user so you have access - push the web application image:
+Images with your DTR domain in the tag will be pushed to your registry. Switch back to the lab environment and the Windows terminal. You have already logged in as the provided-username user so you have access - push the web application image:
 
 ```
 docker image push `
-  "$($env:dtrDomain)/dockersamples/mta-dev-signup-homepage:v1"
+  "$($env:dtrDomain)/<your-organizaition-name>/<your-image-name>:<your-image-tag>"
 ```
 
 The push uploads all the image layers except the base Windows Server layer, which is always served from Docker Hub.
