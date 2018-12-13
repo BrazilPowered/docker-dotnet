@@ -156,7 +156,7 @@ Let's take a minute to notice that the Windows machine you are using in this lab
 
 While the images are building, have a look at the Dockerfile for the Web application in "docker/web". You'll see there are two stages. The first stage compiles the application using MSBuild:
 
-```
+```Dockerfile
 FROM dockersamples/mta-dev-web-builder:3.5 AS builder
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
@@ -171,7 +171,7 @@ In the `builder` stage, the Dockerfile copies the source code into the image and
 
 The second stage uses the `microsoft/aspnet:3.5` image as the base, which is a Windows Server Core image with IIS and ASP.NET 3.5 already configured:
 
-```
+```Dockerfile
 FROM microsoft/aspnet:3.5-windowsservercore-10.0.14393.1884
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
@@ -189,7 +189,8 @@ Again, you don't need Visual Studio or IIS installed to run the web app in a con
 When the build has finished, we will want to deploy the application using Docker Compose.
 
 Make sure you are in the root ~/docker-dotnet directory you pulled from github and then go ahead and build both those images.:
-```.term1
+
+```s
 docker image build -t signup-db:v1 /docker/db
 
 docker image build -t signup-app:v1 /docker/web
@@ -206,10 +207,12 @@ We need to write a docker-compose file (remember: it's a YAML file) with the fol
 3.  The signup-db service should have 1 network, app-net, and use the image we can build with the SQL-Server DB Dockerfile
 4.  The signup-app service also needs the app-net network, but will expose port 80 to the outside network (on port 80). The image here should be the one we can build from the docker/web Dockerfile.
 5.  The signup-app service should also use the "depends_on" parameter to make sure the signup-db is started first, to make sure the connection strings will find the db.
+6.  The app-net network should be declared, and it should be configured to use the existing external network which is already named "nat"
 
-Here's what it should look like when complete:
+### How should the Docker-Compose file look?
+Here's what the docker-compose fole should look like when complete:
 
-```Dockerfile
+```yml
 version: '3.3'
 
 services:
@@ -235,21 +238,21 @@ networks:
 
 Let's deploy the application using Docker Compose:
 
-```.term1
+```s
 docker-compose up -d
 ```
 
-Docker Compose will start containers for the database and the web app. The <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-1/app/docker-compose.yml" target="_blank">compose file</a> configures the services, using the database image and the application image you've just built.
+Docker Compose will start containers for the database and the web app. The compose file configures the services, using the database image and the application image you've just built.
 
 When the `docker-compose` command completes, your application is running in Docker, in Windows containers on the Windows node. You can see all the running containers:
 
-```.term1
+```s
 docker container ls
 ```
 
 The HTTP port for the web container is published so the app is available to the outside world.
 
-> To see the app running, browse to the Windows node hostname from the Session Information pane on the lab environment (an address like `ip172-18-0-11-bahdje2ubbhg0...play-with-docker.com`)
+> To see the app running, navigate to your IP address in a local web browser. Since the container was mapped to port `80`, we won't have to specify a port number.)
 
 ![PWD Session Information](./images/windows-session.jpg)
 
@@ -257,11 +260,13 @@ The application is a newsletter sign-up app for Play with Docker. It will take a
 
 ![PWD newsletter sign up page](./images/part-1-signup.jpg)
 
+> Don't worry, the data you use for this lab only goes to your local DB container, and is never shared anywhere else. It will all be gone once you end the lab and clean up your environment.
+
 Go ahead and fill in the form. When you click _Go_, the data is saved to SQL Server running in a container. The SQL Server container doesn't publish any ports, so it's only accessible to other containers and the Docker API. 
 
 Check your data is stored by switching back to the lab environment, and running a PowerShell command in the Windows terminal:
 
-```.term1
+```s
 docker container exec app_signup-db_1 powershell -Command "Invoke-SqlCmd -Query 'SELECT * FROM Prospects' -Database SignUpDb"
 ```
 
