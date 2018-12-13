@@ -311,7 +311,7 @@ docker-compose `
   build
 ```
 
-> Notice here that *Compose* merges the two input files to spin up your app. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean. These can later be combined when making a *stack file*.
+> Notice here that *Compose* merges the three input files to spin up your app. The first specifies the structure of the app and the second adds the build details, while the third gives the instructions to build any of the missing components. They're kept separate because they have different concerns, and this keeps them clean. Parts of these can later be combined when making a *stack file*.
 
 While it builds, have a look at the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/docker/web/Dockerfile" target="_blank">new Dockerfile for the web app</a>. The app has been upgraded from ASP.NET 3.5 to ASP.NET 4.7. The builder stage runs the build steps directly in Docker rather than using a PowerShell build script:
 
