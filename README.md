@@ -441,9 +441,17 @@ docker image build -t signup-homepage:v1 /docker/homepage
 Now, we modify our docker-compose file to use this new component
 
 Take a look at the the compose files we had at the end of our last lab. The
-<a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose-local.yml" target="_blank">first, docker-compose-local.yml</a> and the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose.yml" target="_blank">docker-compose.yml</a>. 
+<a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose-local.yml" target="_blank">first, docker-compose-local.yml</a>, sets up the details for the services, including things like port numbers accessible to the outside world... but we don't need any of those for this image. Our Web-App already has external network access, and it has the codebehind controller to route traffic to this container. We only need to add this new service to <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose.yml" target="_blank">the second, docker-compose.yml</a>, to name the service and tell it to access the app-net network so that codebehind controller can communicate with it.
 
-The first compose file (docker-compose-local) We need to add this new service
+```YAML
+  signup-homepage:
+    image: dockersamples/mta-dev-signup-homepage:v1
+    networks:
+      - app-net
+```
+
+Now if we start the app with docker-compose, we should see the new homepage service working as expected:
+
 ```.term1
 docker-compose `
   -f .\docker-compose.yml `
@@ -453,7 +461,7 @@ docker-compose `
 
 You'll see that a new homepage container gets started, and the web app container gets replaced with a new container. 
 
-> There are some other containers started too, they're part of the [MTA .NET video series](https://blog.docker.com/2018/02/video-series-modernizing-net-apps-developers/), but you don't need to use them here.
+> There may be some other containers started too, they're part of the [MTA .NET video series](https://blog.docker.com/2018/02/video-series-modernizing-net-apps-developers/), and you can ignore them for now.
 
 The new version is available on your same Windows Docker host. Browse to the Windows server as before - using the hostname from _Session Information_.
 
