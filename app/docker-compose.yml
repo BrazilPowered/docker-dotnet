@@ -21,8 +21,3 @@ services:
       - message-queue
     networks:
       - app-net
-
-  signup-homepage:
-    image: dockersamples/mta-dev-signup-homepage:v1
-    networks:
-      - app-net
