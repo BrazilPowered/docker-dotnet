@@ -381,3 +381,198 @@ It's easy to add functionality to your app when it's running in Docker. This ver
 > This version of the app does scale. You could run dozens of web containers and just a handful of message handler containers. Under high load, the message queue will retain messages until the handlers have capacity to process them - and SQL Server is no longer a bottleneck.
 
 In the next task you'll extract the homepage functionality from the app and run it in a separate container.
+
+## <a name="4"></a>Task 4: Replacing the homepage
+
+Product owners often want to change UI features quickly - so they can release them and get fast feedback. Traditional apps make that difficult because the monolithic codebase means you need to do a lot of regression testing, even for simple changes.
+
+Extracting a frequently-changing feature from the monolith and running it in a separate container enables fast, safe updates. You can change the UI by replacing the container, without having to test the rest of the monolith.
+
+Switch to the `3-replacingparts` branch and build the new version of the app using Docker Compose:
+
+```.term1
+git checkout 3-replacingparts
+
+docker-compose `
+  -f .\docker-compose.yml `
+  -f .\docker-compose-local.yml  `
+  -f .\docker-compose-build.yml `
+  build
+```
+
+The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">compose file for part 3</a> adds one new component, a custom homepage container. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
+
+```
+FROM microsoft/iis:nanoserver-sac2016
+COPY .\docker\homepage\index.html C:\inetpub\wwwroot
+```
+
+This just packages a static HTML file on top of the `microsoft/iis` image, running in Nano Server. There's a code change in ASP.NET app too. In this version the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> loads the homepage content from the new component.
+
+When the build completes, run the new version of the app using Docker Compose:
+
+```.term1
+docker-compose `
+  -f .\docker-compose.yml `
+  -f .\docker-compose-local.yml `
+  up -d
+```
+
+You'll see that a new homepage container gets started, and the web app container gets replaced with a new container. 
+
+> There are some other containers started too, they're part of the [MTA .NET video series](https://blog.docker.com/2018/02/video-series-modernizing-net-apps-developers/), but you don't need to use them here.
+
+The new version is available on your same Windows Docker host. Browse to the Windows server as before - using the hostname from _Session Information_.
+
+Now when the ASP.NET web container receives a request, it calls out to the homepage container which renders the new homepage. That new homepage is a modern UI written in Vue.js:
+
+![Part 5 app homepage](./images/part-5-homepage.JPG)
+
+If the product team don't like the new UI, they can easily replace it by building a new homepage and replacing the homepage container. The web app container doesn't need to change, so there are no regression tests to run.
+
+> The app has a modern architecture now, powered by Docker and without needing a full rewrite. You've extracted key features from the app and run them in separate containers, using Docker to plug everything together, and to give you a consistent build and deployment process for the whole solution.
+
+So far you've been running the application using Docker on the Windows node. Next you'll learn how to push the images to a private registry and run the app in a cluster with Docker swarm mode.
+
+## <a name="5"></a>Step 5: Push Images to Docker Trusted Registry
+
+Now that the images are built, you'll push them to Docker Trusted Registry (DTR). DTR is the enterprise-grade image storage solution from Docker. You install it behind your firewall so that you can securely store and manage the Docker images you use in your applications and to make them available on Docker Universal Control Plane (UCP).  UCP is the enterprise-grade cluster management solution from Docker and it helps you manage your Docker cluster and applications through a single interface.
+
+Your lab environment already has DTR and UCP running. Your URL for DTR is in the Session Information panel, together with the password for the `admin` user to use. 
+
+The DTR domain will be something like `ip172-18-0-22-bahe6raubbhg0095k710.direct.ee-beta2.play-with-docker.com`. To make it easier to work with, store that domain in an environment variable:
+
+```
+$env:dtrDomain='<your-dtr-domain-name>'
+```
+
+> Be sure to use your actual DTR domain name, which you can copy from the Session Panel.
+
+Now log in in to your DTR instance with your `admin` credentials:
+
+```
+docker login "$env:dtrDomain" --username admin
+```
+![DTR login](./images/dtr-login.jpg)
+
+DTR is a private registry. To push images to a registry other than Docker Hub, you need to tag them with the registry's domain name. 
+
+Tag the new web homepage image you've built with a new name that includes the DTR domain and the `dockersamples` organization:
+
+```
+docker image tag `
+  dockersamples/mta-dev-signup-homepage:v1 `
+  "$($env:dtrDomain)/dockersamples/mta-dev-signup-homepage:v1"
+```
+
+Next you need to create an organization to group image repositories for the images you want to store. First click on the `DTR` button the left sidebar and log into DTR using the same `admin` credentials in the Session Information panel (**ignore the security warnings - the lab environment uses self-signed HTTPS certificates**).
+
+Click on the _Organizations_ link on the left-hand navigation, and then the _New organization_ button:
+
+![DTR - organization page](./images/dtr-new-organization.jpg)
+
+And then name the organization `dockersamples`:
+
+![DTR - new organization](./images/dtr-new-organization-2.jpg)
+
+Save the organization, then click on the `dockersamples` organization and browse to the _Repositories_ tab:
+
+![DTR - repository page](./images/dtr-new-repo.jpg)
+
+Click the _Add repository_ button and create a repository called `mta-dev-signup-homepage` with the default settings:
+
+![DTR - repository page](./images/dtr-new-repo-2.jpg)
+
+> Organizations and repositories in DTR give you fine-grained control over who can push and pull images. Your `admin` account has full access, but you could create a test team who only had access to pull images for testing.
+
+Images with your DTR domain in the tag will be pushed to your registry. Switch back to the lab environment and the Windows terminal. You have already logged in as the `admin` user so you have access - push the web application image:
+
+```
+docker image push `
+  "$($env:dtrDomain)/dockersamples/mta-dev-signup-homepage:v1"
+```
+
+The push uploads all the image layers except the base Windows Server layer, which is always served from Docker Hub.
+
+When the push completes you can see the image in DTR in the _Images_ tab of the _Repository_ windows:
+
+![Image in DTR](./images/dtr_image.jpg)
+
+The web image is now stored in a private registry with rich access controls, and features for security scanning and digital signing of images. The image is also available to use in Universal Control Plane.
+
+> In production projects this step would be done by the CI process. In this lab you've just pushed one image to see how DTR works. The other images for the lab are all publicly available on Docker Hub.
+
+## <a name="6"></a> Step 6: Deploy on Universal Control Plane
+
+Your lab environment has a Docker Enterprise cluster set up, but the Windows node is not yet part of the cluster. Open the terminal window for the `manager1` node and get the join token for adding new nodes to the swarm:
+
+```
+docker swarm join-token worker
+```
+
+![Swarm join token](./images/manager-join-token.jpg)
+
+Copy the full `docker swarm join` command with the long token to the clipboard. Then switch back to the Windows terminal. When the image push has completed, paste the command to join the Windows node to the UCP cluster:
+
+![Joining the Windows node](./images/worker-swarm-join.jpg)
+
+Now we can switch to the UCP UI. Click on the UCP button to launch the UCP window.
+
+> DTR and UCP have single sign-on support so you don't need to log in again - in a production environment you can also use your existing AD or LDAP provider for authentication.
+
+Next you'll deploy the application using Docker swarm mode as the orchestrator. The latest version of Docker Enterprise supports Kubernetes, but Windows containers are still in beta with Kubernetes, so we will use swarm mode. 
+
+The application image in DTR is private, only authenticated users can access it. UCP can pull a private image onto all nodes in the cluster. On the left-navigation panel, click _Shared Resources_ and then _Images_. You'll see all the images currently pulled on the cluster. Click _Pull Image_ to pull the app image from DTR:
+
+![](./images/ucp-pull-image.jpg)
+
+Enter your user credentials and the image name **including your full DTR domain**, so in my case I enter:
+
+```
+ip172-18-0-12-bao29l5plqdg00dpiv60.direct.beta-hybrid.play-with-docker.com/dockersamples/mta-dev-signup-homepage:v1
+```
+![Pulling DTR image in UCP](./images/ucp-pull-image-2.jpg)
+
+> Be sure to use your DTR domain name, or the image won't load and you won't be able to run the app.
+
+UCP authenticates with DTR and pulls the image onto all nodes. You will see some `failed pull` messages in the output, because UCP does not know this is a Windows image and it tries to pull it to the Linux nodes to, where it fails. When the pull completes, click the _Done_ button:
+
+![](./images/ucp-pull-image-3.jpg)
+
+Now you're ready to deploy the app to your production cluster! 
+
+On the left-navigation panel, click _Shared Resources_ and then _Stacks_. This shows all the stacks running on the cluster on any orchestrator - UCP supports classic swarm, swarm mode and Kubernetes. Click the _Create Stack_ button to deploy a new stack:
+
+![UCP stack screen](./images/ucp-stacks.jpg)
+
+You can upload a Docker Compose YAML file, or paste in the contents. You'll need to paste in the sample YAML file and update the app image name to add your DTR repository.
+
+Open the [compose file](./docker-stack.yml) and copy the contents to the clipboard. Then paste the YAML into the UCP _Ceate Stack_ and update the image name for the app service.
+
+The YAML starts like this:
+
+```
+version: '3.3'
+services:
+
+  signup-homepage:
+    image: <your-dtr-domain>/mta-dev-signup-homepage:v1
+```
+
+You will need to replace `<your-dtr-domain>` with your actual DTR domain, so the image name matches the image you pulled from DTR:
+
+![Create the stack in UCP](./images/ucp-create-stack-2.jpg)
+
+Call the stack `signup`, and select `Swarm Services` for the deployment mode. Click _Create_ to deploy the stack. You will see output telling you that all the services have been created:
+
+![Stack created in UCP](./images/ucp-create-stack-3.jpg)
+
+Now on the left-hand navigation select _Swarm_ and _Services_. The page shows you all the services for the application. The services show a green light when all containers are running - this will take a few moments while the images are downloaded and containers are scheduled on the Windows node.
+
+Soon all the services will be running at 100%:
+
+![Stack services running](./images/ucp-services-running.jpg)
+
+The new version is available on your same Windows Docker host. Browse to the Windows server as before - using the hostname from _Session Information_.
+
+Here there are 9 containers running as swarm services for my application, and with Docker Enterprise you can also run Linux containers as a Kubernetes stack. You use DTR to ship, scan and sign all your images, and UCP to manage all your apps - a consistent platform for any type of application.
