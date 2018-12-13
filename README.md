@@ -306,9 +306,9 @@ Switch to the `2-performbetter` branch which has the new version of the app, and
 git checkout 2-performbetter
 
 docker-compose `
-  -f .\docker-compose.yml `
-  -f .\docker-compose-local.yml `
-  -f .\docker-compose-build.yml `
+  -f .\app\docker-compose.yml `
+  -f .\app\docker-compose-local.yml `
+  -f .\app\docker-compose-build.yml `
   build
 ```
 
@@ -490,16 +490,16 @@ $env:dtrDomain='<your-dtr-domain-name>'
 
 > Be sure to use your actual DTR domain name.
 
-Now log in in to your DTR instance with your provided credentials:
+Now log in to your DTR instance with your provided credentials:
 
 ```
-docker login "$env:dtrDomain" --username <you-username>
+docker login "$env:dtrDomain" --username <your-username>
 ```
 ![DTR login](./images/dtr-login.jpg)
 
 DTR is a private registry. To push images to a registry other than Docker Hub, you need to tag them with the registry's domain name. 
 
-Tag the new web homepage image you've built with a new name that includes the DTR domain and the `dockersamples` organization:
+Tag the new web homepage image you've built with a new name that includes the DTR domain and your assigned organization:
 
 ```
 docker image tag `
@@ -507,7 +507,11 @@ docker image tag `
   "$($env:dtrDomain)/<your-Organization-Name>/mta-dev-signup-homepage:v1"
 ```
 
-Next you need to create an organization to group image repositories for the images you want to store. Skip this section if you have already done this.
+> This might look like `104.248.14.199:4443/sotol-r-us/mta-dev-signup-homepage:v1`
+
+Next you need to create an organization to group image repositories for the images you want to store. 
+
+>> Skip the next few steps in this section if you or your instructor have already made one.
 
 First click on the `DTR` button the left sidebar and log into DTR using your provided credentials. (**ignore the security warnings - the lab environment uses self-signed HTTPS certificates**).
 
@@ -548,20 +552,20 @@ The web image is now stored in a private registry with rich access controls, and
 
 ## <a name="6"></a> Step 6: Deploy on Universal Control Plane
 
-Your lab has a Docker Enterprise cluster set up, but the Windows node is not on that cluster. So to deploy to the cluster, we must make sure we have already pushed our images to the DTR. Then we ony need to switch to the UCP UI to make our deployments happen. Click on the UCP button to launch the UCP window.
+Your lab has a Docker Enterprise cluster set up, but the Windows node is not on that cluster. So to deploy to the cluster, we must make sure we have already pushed our images to the DTR. Then we only need to switch to the UCP UI to make our deployments happen. Navigate to your UCP in your web browser. (Yours may be using te IP, such as https://104.248.14.199)
 
 > DTR and UCP have single sign-on support so you don't need to log in again - in a production environment you can also use your existing AD/LDAP login (NTID) for authentication.
 
-Next you'll deploy the application using Docker swarm mode as the orchestrator. The latest version of Docker Enterprise supports Kubernetes, but Windows containers are still in beta with Kubernetes, so we will use swarm mode. 
+Next you'll deploy the application using Docker swarm mode as the orchestrator. We will use swarm mode. 
 
-The application image in DTR is private, only authenticated users can access it. UCP can pull a private image onto all nodes in the cluster. On the left-navigation panel, click _Shared Resources_ and then _Images_. You'll see all the images currently pulled on the cluster. Click _Pull Image_ to pull the app image from DTR:
+The application image in DTR is private, only authenticated users can access it. But UCP can pull a private image onto all nodes in the cluster. On the left-navigation panel, click _Shared Resources_ and then _Images_. You'll see all the images currently pulled on the cluster. Click _Pull Image_ to pull the app image from DTR:
 
 ![](./images/ucp-pull-image.jpg)
 
 Enter your user credentials and the image name **including your full DTR domain**, so in my case I enter:
 
 ```
-104.248.14.199:4443/dockersamples/mta-dev-signup-homepage:v1
+104.248.14.199:4443/sotol-r-us/signup-homepage:v1
 ```
 ![Pulling DTR image in UCP](./images/ucp-pull-image-2.jpg)
 
