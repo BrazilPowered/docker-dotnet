@@ -17,10 +17,6 @@ services:
   signup-save-handler:
     depends_on:
       - signup-db
-  
-  kibana:
-    ports:
-      - "5601:5601"
 
 networks:
   app-net:
