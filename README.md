@@ -306,9 +306,9 @@ Switch to the `2-performbetter` branch which has the new version of the app, and
 git checkout 2-performbetter
 
 docker-compose `
-  -f .\docker-compose.yml `
-  -f .\docker-compose-local.yml `
-  -f .\docker-compose-build.yml `
+  -f .\app\docker-compose.yml `
+  -f .\app\docker-compose-local.yml `
+  -f .\app\docker-compose-build.yml `
   build
 ```
 
