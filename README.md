@@ -38,22 +38,23 @@ or by reaching out to the Jabil Developer Team directly at
 
 * [Task 0: The Play with Docker Lab Environment](#0)
 * [Task 1: Running the app in a container](#1)
-* [Task 2: Fixing a performance issue](#2)
-* [Task 3: Replacing the homepage](#3)
-* [Task 4: Push Images to Docker Trusted Registry](#4)
-* [Task 5: Deploy on Universal Control Plane](#5)
+* [Task 2: Deploy using Docker-Compose](#2)
+* [Task 3: Fixing a performance issue](#3)
+* [Task 4: Replacing the homepage](#4)
+* [Task 5: Push Images to Docker Trusted Registry](#5)
+* [Task 6: Deploy on Universal Control Plane](#6)
 
 ## <a name="0"></a>Step 0: The Docker EE Lab Environment
 
 Login to the Docker Enterprise Edition session at the URL provided by your workshop organizer. 
 This is a hybrid cluster, with Linux and Windows nodes. This workshop is designed for 
-people attending an in-person workshop, but Steps 1-4 of this lab can be completed on your local 
-machine, and then later pushed to Jabil's Docker Environmentvfor Step 5.
+people attending an in-person workshop, but Steps 1-5 of this lab can be completed on your local 
+machine, and then later pushed to Jabil's Docker Environmentvfor Step 6.
 
 The left-hand navigation lists all the features avaiable to this UCP. Click on 'Shared Resources' 
 and then 'Nodes' to see all the environments in this Swarm. You should see a list of hostnames, 
 with the corresponding role (of manager or worker), and with at least 1 worker that has Windows 
-under OS/Arch. This is required for Step 5 to work. That will be the Windows worker node on the 
+under OS/Arch. This is required for Step 6 to work. That will be the Windows worker node on the 
 Swarm where this app will run when complete.
 
 ![Windows terminal in Play with Docker](./images/pwd-windows-terminal.jpg)
@@ -196,7 +197,7 @@ docker image build -t signup-db:v1 /docker/db
 docker image build -t signup-app:v1 /docker/web
 ```
 
-## Task 2: Deploy using Docker-Compose
+##  <a name="2"></a>Task 2: Deploy using Docker-Compose
 
 If we want to stand up a single container, it is easy to execute a `docker run` command with the options we learned will set it up in our environment. But to work in tandem with another app, we would need to *manually* declare the appropriate networks, volumes, etc for EACH container EVERY time... Let's save ourselves that hassle with docker-compose.
 
@@ -288,7 +289,7 @@ Country_CountryCode : GBR
 
 Next you'll go on to modernize the app, fixing some issues with the current architecture.
 
-## <a name="2"></a>Task 2: Fixing a performance issue
+## <a name="3"></a>Task 3: Fixing a performance issue
 
 Right now the app makes a synchronous call to SQL Server when a new prospect signs up. While the app is looking up reference data and saving the new row, it has exclusive use of one of the connections in the database connection pool. You can scale up the web app by running many containers, but under high load the app will starve the connection pool and SQL Server becomes a bottleneck.
 
@@ -379,7 +380,7 @@ It's easy to add functionality to your app when it's running in Docker. This ver
 
 In the next task you'll extract the homepage functionality from the app and run it in a separate container.
 
-## <a name="3"></a>Task 3: Replacing the homepage
+## <a name="4"></a>Task 4: Replacing the homepage
 
 Product owners often want to change UI features quickly - so they can release them and get fast feedback. Traditional apps make that difficult because the monolithic codebase means you need to do a lot of regression testing, even for simple changes.
 
@@ -431,7 +432,7 @@ If the product team don't like the new UI, they can easily replace it by buildin
 
 So far you've been running the application using Docker on the Windows node. Next you'll learn how to push the images to a private registry and run the app in a cluster with Docker swarm mode.
 
-## <a name="4"></a>Step 4: Push Images to Docker Trusted Registry
+## <a name="5"></a>Step 5: Push Images to Docker Trusted Registry
 
 Now that the images are built, you'll push them to Docker Trusted Registry (DTR). DTR is the enterprise-grade image storage solution from Docker. You install it behind your firewall so that you can securely store and manage the Docker images you use in your applications and to make them available on Docker Universal Control Plane (UCP).  UCP is the enterprise-grade cluster management solution from Docker and it helps you manage your Docker cluster and applications through a single interface.
 
@@ -499,7 +500,7 @@ The web image is now stored in a private registry with rich access controls, and
 
 > In production projects this step would be done by the CI process. In this lab you've just pushed one image to see how DTR works. The other images for the lab are all publicly available on Docker Hub.
 
-## <a name="5"></a> Step 5: Deploy on Universal Control Plane
+## <a name="6"></a> Step 6: Deploy on Universal Control Plane
 
 Your lab environment has a Docker Enterprise cluster set up, but the Windows node is not yet part of the cluster. Open the terminal window for the `manager1` node and get the join token for adding new nodes to the swarm:
 
