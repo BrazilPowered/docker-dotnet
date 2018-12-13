@@ -399,7 +399,7 @@ docker-compose `
   build
 ```
 
-The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">compose file for part 5</a> adds one new component, a custom homepage container. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
+The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">compose file for part 3</a> adds one new component, a custom homepage container. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
 
 ```
 FROM microsoft/iis:nanoserver-sac2016
