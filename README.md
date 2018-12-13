@@ -526,7 +526,7 @@ Click the _Add repository_ button and create a repository called `mta-dev-signup
 
 ![DTR - repository page](./images/dtr-new-repo-2.jpg)
 
-> Organizations and repositories in DTR give you fine-grained control over who can push and pull images. And `admin` account has full access, and an Organization Owner has full access to the resources belonging to that Org. For example, you could create a test team in a Testing Organization who only had access to pull images for testing.
+> Organizations and repositories in DTR give you fine-grained control over who can push and pull images. An `admin` account has full access, and an Organization Owner has full access to the resources belonging to that Org. For example, you could create a test team in a Testing Organization who only had access to pull images for testing.
 
 Images with your DTR domain in the tag will be pushed to your registry. Switch back to the lab environment and the Windows terminal. You have already logged in as the provided-username user so you have access - push the web application image:
 
@@ -547,21 +547,9 @@ The web image is now stored in a private registry with rich access controls, and
 
 ## <a name="6"></a> Step 6: Deploy on Universal Control Plane
 
-Your lab environment has a Docker Enterprise cluster set up, but the Windows node is not yet part of the cluster. Open the terminal window for the `manager1` node and get the join token for adding new nodes to the swarm:
+Your lab has a Docker Enterprise cluster set up, but the Windows node is not on that cluster. So to deploy to the cluster, we must make sure we have already pushed our images to the DTR. Then we ony need to switch to the UCP UI to make our deployments happen. Click on the UCP button to launch the UCP window.
 
-```
-docker swarm join-token worker
-```
-
-![Swarm join token](./images/manager-join-token.jpg)
-
-Copy the full `docker swarm join` command with the long token to the clipboard. Then switch back to the Windows terminal. When the image push has completed, paste the command to join the Windows node to the UCP cluster:
-
-![Joining the Windows node](./images/worker-swarm-join.jpg)
-
-Now we can switch to the UCP UI. Click on the UCP button to launch the UCP window.
-
-> DTR and UCP have single sign-on support so you don't need to log in again - in a production environment you can also use your existing AD or LDAP provider for authentication.
+> DTR and UCP have single sign-on support so you don't need to log in again - in a production environment you can also use your existing AD/LDAP login (NTID) for authentication.
 
 Next you'll deploy the application using Docker swarm mode as the orchestrator. The latest version of Docker Enterprise supports Kubernetes, but Windows containers are still in beta with Kubernetes, so we will use swarm mode. 
 
