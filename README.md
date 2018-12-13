@@ -311,7 +311,7 @@ docker-compose `
   build
 ```
 
-While it builds, have a look at the <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-3/docker/web/Dockerfile" target="_blank">new Dockerfile for the web app</a>. The app has been upgraded from ASP.NET 3.5 to ASP.NET 4.7. The builder stage runs the build steps directly in Docker rather than using a PowerShell build script:
+While it builds, have a look at the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/docker/web/Dockerfile" target="_blank">new Dockerfile for the web app</a>. The app has been upgraded from ASP.NET 3.5 to ASP.NET 4.7. The builder stage runs the build steps directly in Docker rather than using a PowerShell build script:
 
 ```
 FROM dockersamples/mta-dev-web-builder:4.7.1 AS builder
@@ -325,7 +325,7 @@ COPY src\SignUp C:\src
 RUN msbuild SignUp.Web.csproj /p:OutputPath=c:\out /p:DeployOnBuild=true
 ```
 
-> Running the `nuget restore` and `msbuild` steps separately takes advantage of Docker's image layer cache. If the package file hasn't changed, the `nuget restore` layer gets loaded from the cache, saving an expensive operation in the build.
+> Running the `nuget restore` and `msbuild` steps separately takes advantage of Docker's image layer cache. If the package file hasn't changed, the `nuget restore` layer gets loaded from the cache, saving an expensive time-wasting operation in the build.
 
 The new version of the code publishes an event from the web app to a message queue when a user signs up. There are some new lines in the application image stage, specifying values for environment variables:
 
@@ -339,9 +339,9 @@ ENV APP_ROOT="C:\web-app" `
 
 - `MESSAGE_QUEUE_URL` is the URL of the message queue. The web app uses an environment variable for this configuration, the default value expects to find the message queue in a container called `message-queue`
 
-- `DB_CONNECTION_STRING_PATH` is the path to the .NET config file that contains the database connection string. The blank value means the app loads the default config file, but this enables the app to use Docker secrets for the connection string.
+- `DB_CONNECTION_STRING_PATH` is the path to the .NET config file that contains the database connection string. The blank value means the app loads the default config file, but this enables the app to use *Docker secrets* for the connection string.
 
-Docker Compose also builds a console application, which is the message handler listening for events. The <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-3/docker/save-handler/Dockerfile" target="_blank">Dockerfile for the message handler</a> is very similar to the web app - stage 1 compiles the console app, and stage 2 packages it to run in a Windows Server Core container.
+Docker Compose also builds a console application, which is the message handler listening for events. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/docker/save-handler/Dockerfile" target="_blank">Dockerfile for the message handler</a> is very similar to the web app - stage 1 compiles the console app, and stage 2 packages it to run in a Windows Server Core container.
 
 When the build completes, run the new version of the app using Docker Compose:
 
@@ -351,7 +351,7 @@ docker-compose `
   -f .\docker-compose-local.yml `
   up -d
 ```
-> Compose merges the two input files. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean.
+> Notice here that *Compose* merges the two input files to spin up your app. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean. These can later be combined when making a *stack file*.
 
 You'll see output saying that the database container is up-to-date, and then the message queue and message handler container get created, and the web container gets recreated. Compose uses the new specification as the desired state, compares it to the running containers, and creates any containers it needs.
 
