@@ -82,30 +82,78 @@ You can package Windows server applications to run in Docker using existing depl
 Start by cloning the Git repository for the sample app:
 
 ```.term1
-git clone https://github.com/dockersamples/mta-netfx-dev.git
+git clone https://github.com/BrazilPowered/docker-dotnet
+
+cd docker-dotnet
 ```
 
-Switch to the source directory and checkout the `part-1` branch, which has the first version of the app::
+## Task 1a: Build your Web-App Image
 
-```.term1
-cd mta-netfx-dev
+Your first task will be to build an image for our web app ui. Let's use the following requirements
+1.  Use a Multi-Stage Build
+2.  Use the dotnet-framework version 4.7.2-sdk as the Base Image for your build-server image
+3.  In each stage, define "powershell" as your default SHELL using the following args in exec form: "-Command", "$ErrorActionPreference = 'Stop';"
 
-git checkout part-1
+For your Build-Server stage:
+1.  Use the "C:\src" folder as your container's Working Directory
+2.  Copy the src\SignUp folder to the Working Directory on the Container Image
+3.  Run the build.ps1 script (this will compile the app)
+
+For your App Image stage:
+1.  Use the "C:\web-app" as your container's Working Directory
+2.  Remove the IIS Default Web Site with the following command: Remove-Website -Name 'Default Web Site';
+3.  Add your website as the new IIS web-app on port 80 with the following command: New-Website -Name 'web-app' -Port 80 -PhysicalPath 'C:\web-app'
+4.  Copy the compiled files from your build-server stage into the working directory of this container image. They are located at "C:\out\_PublishedWebsites\SignUp.Web"
+
+## Task 1b: Set up your Database
+
+This version 1 uses containers for a SQL Server database and the ASP.NET app. You can set this up by building a Docker image from a Dockerfile that includes your passwords, your DB init or import scripts, and defining the volume that will store your data (remember, data in a container is not persistent sio we MUST use a Voloume for DB data).
+
+Notice that we are using two separate images for the web app and DB services. It is important to keep as many part of your application that do different types of tasks as separate as possible. Since unrelated tasks will no longer be stuck to eachother this way, the app is kept cleaner and the maintenence made much easier.
+
+First let's look at the DB Dockerfile in docker/db:
+
+```Dockerfile
+# escape=`
+FROM microsoft/mssql-server-windows-express:2016-sp1
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+ENV ACCEPT_EULA="Y" `
+    sa_password="DockerCon!!!" `
+    DATA_PATH="C:\mssql"
+
+VOLUME ${DATA_PATH}
+
+WORKDIR C:\init
+COPY docker\db .
+
+CMD ./init.ps1 -sa_password $env:sa_password -Verbose
+
+HEALTHCHECK CMD powershell -command `
+    try { `
+     $result = Invoke-SqlCmd -Query 'SELECT TOP 1 1 FROM Countries' -Database SignUpDb; `
+     if ($result[0] -eq 1) { return 0} `
+     else {return 1}; `
+} catch { return 1 }
 ```
 
-Version 1 uses containers for a SQL Server database and the ASP.NET app. You can build the Docker images for both containers using Docker Compose. First change to the application directory and build the images:
+> Notice the "# escape=`" at the top. For windows files, this eliminates the need for using double backslashes (\\) for every single pathname. But this *alone* MUST be the very first line of the Dockerfile in order to work
 
-```.term1
-cd app 
+This Dockerfile pulls 8 layers:
+1.  The base image uses mssql-server-windows-express version 2016-sp1
+2.  It sets the execution environment to be powershell, enabling special functionality like a "SilentlyContinue" to the SQL-Server setup
+3.  It creates 3 environment variables: 1 meets the requirement of accepting an EULA, 2 sets the DB password, and 3 sets the path all the SQL server data will be stored, which is important for when:
+4.  It defines a volume to be at a path pulled from the ENV set above, keeping all the DB data persistent
+5.  It sets a working directory for copying and executing all the files and scripts for this image
+6.  It copies the files in the docker/db folder to the working directory in the container (".")
+7.  It executes the init.ps1 script with an array of required arguments
+8.  And finally sets a "Healthcheck" to provide a way for ther Docker engine to know if the DB service fails. This one returns healthy *if* one or more results are returned by the DB query. the Countries table MUST return values for this web-app to work, so we know it is unhealthy if $result isn't 1.
 
-docker-compose -f .\docker-compose.yml -f .\docker-compose-build.yml build
-```
+Healthchecks are vital to your application's lifecycle in a production container environment. While Docker can detect when your container fails, it doesn't know how your app works; so if your web application has an error that kills your user access, but leaves the server up and running, Docker will keep the container running in a 'healthy' state. To prevent this problem, Healthchecks can be used to alert Docker when normal functionality is broken, giving you the chance to enable automatic actions, or receive messages yourself. Never deploy to PROD without a solid healthcheck that you understand. 
 
-> Compose merges the two input files. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean.
+Let's take a minute to notice that the Windows machine you are using in this lab doesn't need to have SQL Server, Visual Studio or even MSBuild installed - every step in the build process happens inside containers, using images which are packaged with the build toolchain.
 
-The Windows server in your lab environment doesn't have SQL Server, Visual Studio or even MSBuild installed - every step in the build process happens inside containers, using images which are packaged with the build toolchain.
-
-While the images are building, have a look at the <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-1/docker/web/Dockerfile" target="_blank">Dockerfile for the Web application</a>. You'll see there are two stages. The first stage compiles the application using MSBuild:
+While the images are building, have a look at the Dockerfile for the Web application in "docker/web". You'll see there are two stages. The first stage compiles the application using MSBuild:
 
 ```
 FROM dockersamples/mta-dev-web-builder:3.5 AS builder
