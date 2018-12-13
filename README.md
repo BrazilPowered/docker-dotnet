@@ -166,7 +166,7 @@ COPY src\SignUp C:\src
 RUN .\build.ps1
 ```
 
-The `dockersamples/mta-dev-web-builder:3.5` image has .NET 3.5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application.
+The `dockersamples/mta-dev-web-builder:3.5` image was a build-server image made just for this course. It has .NET 3.5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application.
 
 In the `builder` stage, the Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use.
 
@@ -311,7 +311,7 @@ docker-compose `
   build
 ```
 
-> Notice here that *Compose* merges the two input files to spin up your app. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean. These can later be combined when making a *stack file*.
+> Notice here that *Compose* merges the three input files to spin up your app. The first specifies the structure of the app and the second adds the build details, while the third gives the instructions to build any of the missing components. They're kept separate because they have different concerns, and this keeps them clean. Parts of these can later be combined when making a *stack file*.
 
 While it builds, have a look at the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/docker/web/Dockerfile" target="_blank">new Dockerfile for the web app</a>. The app has been upgraded from ASP.NET 3.5 to ASP.NET 4.7. The builder stage runs the build steps directly in Docker rather than using a PowerShell build script:
 
@@ -388,29 +388,62 @@ Product owners often want to change UI features quickly - so they can release th
 
 Extracting a frequently-changing feature from the monolith and running it in a separate container enables fast, safe updates. You can change the UI by replacing the container, without having to test the rest of the monolith.
 
-Switch to the `3-replacingparts` branch and build the new version of the app using Docker Compose:
+Switch to the `3-replacingparts` branch to pull the code pieces we'll need for this:
 
 ```.term1
 git checkout 3-replacingparts
+```
+Your task is to make a dockerfile for the new <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/index.html" target="_blank">custom hopepage</a> component, and then to modify your compose file to add this new component. 
 
-docker-compose `
-  -f .\docker-compose.yml `
-  -f .\docker-compose-local.yml  `
-  -f .\docker-compose-build.yml `
-  build
+The Dockerfile for the homepage can be very simple, with only the following requirements:
+
+1.  Make your Dockerfile in the docker\homepage folder where the index.html file already exists.
+2.  Use an iis image for your Base Layer, the nanoserver-sac2016 version
+3.  Copy the contents of this folder (the homepage and its images) to the IIS published directory on the container (C:\inetpub\wwwroot). Make sure to include the full path from the project root directory (./docker/homepage) so that you can build this image from there.
+
+Two things are required to pull this off. The first is simple: package a static HTML file on top of a server image, in this case the `microsoft/iis` image running in Nano Server. The second is to perform the code change in the ASP.NET app, modifying the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> to load the homepage content from the new component.
+
+```cs
+namespace SignUp.Web
+{
+    public partial class _Default : Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            var homepageUrl = ConfigurationManager.AppSettings["Homepage.Url"];
+            if (!string.IsNullOrEmpty(homepageUrl))
+            {
+                Log.Info($"Loading homepage content from: {homepageUrl}");
+                Response.Clear();
+                var request = HttpWebRequest.Create(homepageUrl);
+                var response = request.GetResponse();
+                using (var stream = response.GetResponseStream())
+                using (var reader = new StreamReader(stream))
+                {
+                    var html = reader.ReadToEnd();
+                    Response.Write(html);
+                }
+                Response.End();
+            }
+        }
+    }
+}
 ```
 
-The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">compose file for part 3</a> adds one new component, a custom homepage container. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
+Let's rebuild build these images. Since we only made changes to the app and new homepage component, we wil only need to build those.
 
+```s
+docker image build -t signup-app:v1 /docker/web
+
+docker image build -t signup-homepage:v1 /docker/homepage
 ```
-FROM microsoft/iis:nanoserver-sac2016
-COPY .\docker\homepage\index.html C:\inetpub\wwwroot
-```
 
-This just packages a static HTML file on top of the `microsoft/iis` image, running in Nano Server. There's a code change in ASP.NET app too. In this version the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> loads the homepage content from the new component.
+Now, we modify our docker-compose file to use this new component
 
-When the build completes, run the new version of the app using Docker Compose:
+Take a look at the the compose files we had at the end of our last lab. The
+<a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose-local.yml" target="_blank">first, docker-compose-local.yml</a> and the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/app/docker-compose.yml" target="_blank">docker-compose.yml</a>. 
 
+The first compose file (docker-compose-local) We need to add this new service
 ```.term1
 docker-compose `
   -f .\docker-compose.yml `
