@@ -265,7 +265,7 @@ The application is a newsletter sign-up app for Play with Docker. It will take a
 
 Go ahead and fill in the form. When you click _Go_, the data is saved to SQL Server running in a container. The SQL Server container doesn't publish any ports, so it's only accessible to other containers and the Docker API. 
 
-Check your data is stored by switching back to the lab environment, and running a PowerShell command in the Windows terminal:
+Check your data is stored by running a PowerShell command in the Windows terminal:
 
 ```s
 docker container exec app_signup-db_1 powershell -Command "Invoke-SqlCmd -Query 'SELECT * FROM Prospects' -Database SignUpDb"
@@ -299,10 +299,10 @@ The next version of the app uses a new architecture:
 
 Now when users save data, the web app publishes an event to a message queue. A message handler listens for those events and makes the SQL Server calls. This architecture does scale, because the message queue smooths out any peaks in traffic.
 
-Switch to the `part-3` branch which has the new version of the app, and build it using Docker Compose:
+Switch to the `2-performbetter` branch which has the new version of the app, and build it using Docker Compose:
 
 ```.term1
-git checkout part-3
+git checkout 2-performbetter
 
 docker-compose `
   -f .\docker-compose.yml `
@@ -351,6 +351,7 @@ docker-compose `
   -f .\docker-compose-local.yml `
   up -d
 ```
+> Compose merges the two input files. The first specifies the structure of the app and the second adds the build details. They're kept separate because they have different concerns, and this keeps them clean.
 
 You'll see output saying that the database container is up-to-date, and then the message queue and message handler container get created, and the web container gets recreated. Compose uses the new specification as the desired state, compares it to the running containers, and creates any containers it needs.
 
