@@ -1,5 +1,8 @@
-﻿using SignUp.Web.Logging;
-using SignUp.Web.Model;
+﻿using AutoMapper;
+using SignUp.Messaging;
+using SignUp.Messaging.Messages.Events;
+using SignUp.Model;
+using SignUp.Web.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -70,22 +73,18 @@ namespace SignUp.Web
                 CompanyName = txtCompanyName.Text,
                 EmailAddress = txtEmail.Text,
                 FirstName = txtFirstName.Text,
-                LastName = txtLastName.Text
+                LastName = txtLastName.Text,
+                Country = country,
+                Role = role
             };
 
-            Log.Info("Saving new prospect, email address: {0}", prospect.EmailAddress);
-            var stopwatch = Stopwatch.StartNew();
-
-            using (var context = new SignUpDbEntities())
+            var eventMessage = new ProspectSignedUpEvent
             {
-                //reload child objects:
-                prospect.Country = context.Countries.First(x => x.CountryCode == country.CountryCode);
-                prospect.Role = context.Roles.First(x => x.RoleCode == role.RoleCode);
+                Prospect = Mapper.Map<Entities.Prospect>(prospect),
+                SignedUpAt = DateTime.UtcNow
+            };
 
-                context.AddToProspects(prospect);
-                context.SaveChanges();
-            }
-            Log.Info("Prospect saved, email address: {0}, ID: {1}, took: {2}ms", prospect.EmailAddress, prospect.ProspectId, stopwatch.ElapsedMilliseconds);
+            MessageQueue.Publish(eventMessage);
 
             Server.Transfer("ThankYou.aspx");
         }
