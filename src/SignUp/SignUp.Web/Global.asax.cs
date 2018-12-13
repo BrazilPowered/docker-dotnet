@@ -1,4 +1,5 @@
-﻿using SignUp.Web.Logging;
+﻿using AutoMapper;
+using SignUp.Web.Logging;
 using System;
 using System.Web;
 
@@ -12,7 +13,13 @@ namespace SignUp.Web
         {
             try
             {
-                SignUp.PreloadStaticDataCache();
+                Mapper.Initialize(cfg => {
+                    cfg.CreateMap<Model.Prospect, Entities.Prospect>();
+                    cfg.CreateMap<Model.Country, Entities.Country>();
+                    cfg.CreateMap<Model.Role, Entities.Role>();
+                });
+
+                SignUp.PreloadStaticDataCache();                
             }
             catch(Exception ex)
             {

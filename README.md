@@ -387,10 +387,10 @@ Product owners often want to change UI features quickly - so they can release th
 
 Extracting a frequently-changing feature from the monolith and running it in a separate container enables fast, safe updates. You can change the UI by replacing the container, without having to test the rest of the monolith.
 
-Switch to the `part-5` branch and build the new version of the app using Docker Compose:
+Switch to the `3-replacingparts` branch and build the new version of the app using Docker Compose:
 
 ```.term1
-git checkout part-5
+git checkout 3-replacingparts
 
 docker-compose `
   -f .\docker-compose.yml `
@@ -399,14 +399,14 @@ docker-compose `
   build
 ```
 
-The <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-5/app/docker-compose.yml" target="_blank">compose file for part 5</a> adds one new component, a custom homepage container. The <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-5/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
+The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/app/docker-compose.yml" target="_blank">compose file for part 5</a> adds one new component, a custom homepage container. The <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/Dockerfile" target="_blank">Dockerfile for the homepage</a> is very simple:
 
 ```
 FROM microsoft/iis:nanoserver-sac2016
 COPY .\docker\homepage\index.html C:\inetpub\wwwroot
 ```
 
-This just packages a static HTML file on top of the `microsoft/iis` image, running in Nano Server. There's a code change in ASP.NET app too. In this version the <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-5/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> loads the homepage content from the new component.
+This just packages a static HTML file on top of the `microsoft/iis` image, running in Nano Server. There's a code change in ASP.NET app too. In this version the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> loads the homepage content from the new component.
 
 When the build completes, run the new version of the app using Docker Compose:
 
