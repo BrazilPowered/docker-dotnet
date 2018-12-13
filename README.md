@@ -90,9 +90,10 @@ cd docker-dotnet
 ## Task 1a: Build your Web-App Image
 
 Your first task will be to build an image for our web app ui. Let's use the following requirements
-1.  Use a Multi-Stage Build
-2.  Use the dotnet-framework version 4.7.2-sdk as the Base Image for your build-server image
-3.  In each stage, define "powershell" as your default SHELL using the following args in exec form: "-Command", "$ErrorActionPreference = 'Stop';"
+1.  Place the Dockerfile in /docker/web
+2.  Use a Multi-Stage Build
+3.  Use the dotnet-framework version 4.7.2-sdk as the Base Image for your build-server image
+4.  In each stage, define "powershell" as your default SHELL using the following args in exec form: "-Command", "$ErrorActionPreference = 'Stop';"
 
 For your Build-Server stage:
 1.  Use the "C:\src" folder as your container's Working Directory
@@ -111,7 +112,7 @@ This version 1 uses containers for a SQL Server database and the ASP.NET app. Yo
 
 Notice that we are using two separate images for the web app and DB services. It is important to keep as many part of your application that do different types of tasks as separate as possible. Since unrelated tasks will no longer be stuck to eachother this way, the app is kept cleaner and the maintenence made much easier.
 
-First let's look at the DB Dockerfile in docker/db:
+First let's place the DB Dockerfile in docker/db, and fill it with this content:
 
 ```Dockerfile
 # escape=`
@@ -164,9 +165,9 @@ COPY src\SignUp C:\src
 RUN .\build.ps1
 ```
 
-The `dockersamples/mta-dev-web-builder:3.5` image has .NET 3..5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application. (Here's the <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-1/docker/web-builder/3.5/Dockerfile" target="_blank">Dockerfile for the build image</a>).
+The `dockersamples/mta-dev-web-builder:3.5` image has .NET 3.5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application.
 
-In the `builder` stage, the Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/dockersamples/mta-netfx-dev/blob/part-1/src/SignUp/SignUp.Web/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use.
+In the `builder` stage, the Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use.
 
 The second stage uses the `microsoft/aspnet:3.5` image as the base, which is a Windows Server Core image with IIS and ASP.NET 3.5 already configured:
 
@@ -183,9 +184,56 @@ COPY --from=builder C:\out\web\SignUpWeb\_PublishedWebsites\SignUp.Web .
 
 The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage.
 
-You don't need Visual Studio or IIS installed to run the web app in a container, and you don't need SQL Server installed to run the application database, you'll do it all with Docker. 
+Again, you don't need Visual Studio or IIS installed to run the web app in a container, and you don't need SQL Server installed to run the application database. You'll do it all with Docker. 
 
-When the build has finished, deploy the application using Docker Compose to the Windows Docker server:
+When the build has finished, we will want to deploy the application using Docker Compose.
+
+Make sure you are in the root ~/docker-dotnet directory you pulled from github and then go ahead and build both those images.:
+```.term1
+docker image build -t signup-db:v1 /docker/db
+
+docker image build -t signup-app:v1 /docker/web
+```
+
+## Task 2: Deploy using Docker-Compose
+
+If we want to stand up a single container, it is easy to execute a `docker run` command with the options we learned will set it up in our environment. But to work in tandem with another app, we would need to *manually* declare the appropriate networks, volumes, etc for EACH container EVERY time... Let's save ourselves that hassle with docker-compose.
+
+We need to write a docker-compose file (remember: it's a YAML file) with the following requirements:
+
+1.  Use compose version 3.3
+2.  Include 2 services, named signup-db and signup-app.
+3.  The signup-db service should have 1 network, app-net, and use the image we can build with the SQL-Server DB Dockerfile
+4.  The signup-app service also needs the app-net network, but will expose port 80 to the outside network (on port 80). The image here should be the one we can build from the docker/web Dockerfile.
+5.  The signup-app service should also use the "depends_on" parameter to make sure the signup-db is started first, to make sure the connection strings will find the db.
+
+Here's what it should look like when complete:
+
+```Dockerfile
+version: '3.3'
+
+services:
+  signup-db:
+    image: signup-db:v1
+    networks:
+      - app-net
+
+  signup-app:
+    image: signup-app:v1
+    ports:
+      - "80:80"
+    depends_on:
+      - signup-db
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    external:
+      name: nat
+```
+
+Let's deploy the application using Docker Compose:
 
 ```.term1
 docker-compose up -d
