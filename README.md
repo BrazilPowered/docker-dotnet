@@ -106,7 +106,7 @@ For your App Image stage:
 2.  Use the "C:\web-app" as your container's Working Directory
 3.  Remove the IIS Default Web Site with the following command: Remove-Website -Name 'Default Web Site';
 4.  Add your website as the new IIS web-app on port 80 with the following command: New-Website -Name 'web-app' -Port 80 -PhysicalPath 'C:\web-app'
-5.  Copy the compiled files from your build-server stage into the working directory of this container image. They are located at "C:\out\_PublishedWebsites\SignUp.Web"
+5.  Copy the compiled files from your build-server stage into the working directory of this container image. They are located at "C:\out\\_PublishedWebsites\SignUp.Web"
 
 ## Task 1b: Set up your Database
 
