@@ -159,34 +159,36 @@ Let's take a minute to notice that the Windows machine you are using in this lab
 While the images are building, have a look at the Dockerfile for the Web application in "docker/web". You'll see there are two stages. The first stage compiles the application using MSBuild:
 
 ```Dockerfile
-FROM dockersamples/mta-dev-web-builder:3.5 AS builder
+FROM microsoft/dotnet-framework:4.7.2-sdk AS builder
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
-WORKDIR C:\src\SignUp.Web
-COPY src\SignUp C:\src
+WORKDIR C:\src
+COPY src\SignUp .
 RUN .\build.ps1
 ```
 
-The `dockersamples/mta-dev-web-builder:3.5` image was a build-server image made just for this course. It has .NET 3.5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application.
+This `builder` stage uses the `microsoft/dotnet-framework:4.7.2-sdk` image, which has the entire .NET 4.7.2 Software Development Kit toolchain needed to compile an ASP.NET 4.7.2 application (including MSBuild, NuGet, and the Web Deploy packages). It is made specifically for cases like our Multi-Stage build.
 
-In the `builder` stage, the Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use.
+>Remember, we don't always need everything used to compile an application when we run an application. A multi-stage build allows us to separate the build process from the running application. Using this method allows our PROD container can be much smaller & more efficent, having only the minimum resources needed to run your app with maximum performance.
 
-The second stage uses the `microsoft/aspnet:3.5` image as the base, which is a Windows Server Core image with IIS and ASP.NET 3.5 already configured:
+The `builder` stage Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use. 
+
+The second stage uses the `aspnet:4.7.2-windowsservercore-ltsc2016` image as the base, which is a Windows Server Core image with IIS and ASP.NET 4.7.2 already configured:
 
 ```Dockerfile
-FROM microsoft/aspnet:3.5-windowsservercore-10.0.14393.1884
+FROM microsoft/aspnet:4.7.2-windowsservercore-ltsc2016
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
 WORKDIR C:\web-app
 RUN Remove-Website -Name 'Default Web Site'; `
     New-Website -Name 'web-app' -Port 80 -PhysicalPath 'C:\web-app'
 
-COPY --from=builder C:\out\web\SignUpWeb\_PublishedWebsites\SignUp.Web .
+COPY --from=builder C:\out\_PublishedWebsites\SignUp.Web .
 ```
 
-The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage.
+The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage into your new container.
 
-Again, you don't need Visual Studio or IIS installed to run the web app in a container, and you don't need SQL Server installed to run the application database. You'll do it all with Docker. 
+Again, you don't need Visual Studio or IIS installed on your own machine to run the web app in a container, nor do you need SQL Server installed to run the application database. It can all be done with using only Docker.
 
 When the build has finished, we will want to deploy the application using Docker Compose.
 
@@ -490,16 +492,16 @@ $env:dtrDomain='<your-dtr-domain-name>'
 
 > Be sure to use your actual DTR domain name.
 
-Now log in in to your DTR instance with your provided credentials:
+Now log in to your DTR instance with your provided credentials:
 
 ```
-docker login "$env:dtrDomain" --username <you-username>
+docker login "$env:dtrDomain" --username <your-username>
 ```
 ![DTR login](./images/dtr-login.jpg)
 
 DTR is a private registry. To push images to a registry other than Docker Hub, you need to tag them with the registry's domain name. 
 
-Tag the new web homepage image you've built with a new name that includes the DTR domain and the `dockersamples` organization:
+Tag the new web homepage image you've built with a new name that includes the DTR domain and your assigned organization:
 
 ```
 docker image tag `
@@ -507,7 +509,11 @@ docker image tag `
   "$($env:dtrDomain)/<your-Organization-Name>/mta-dev-signup-homepage:v1"
 ```
 
-Next you need to create an organization to group image repositories for the images you want to store. Skip this section if you have already done this.
+> This might look like `104.248.14.199:4443/sotol-r-us/mta-dev-signup-homepage:v1`
+
+Next you need to create an organization to group image repositories for the images you want to store. 
+
+>> Skip the next few steps in this section if you or your instructor have already made one.
 
 First click on the `DTR` button the left sidebar and log into DTR using your provided credentials. (**ignore the security warnings - the lab environment uses self-signed HTTPS certificates**).
 
@@ -548,20 +554,20 @@ The web image is now stored in a private registry with rich access controls, and
 
 ## <a name="6"></a> Step 6: Deploy on Universal Control Plane
 
-Your lab has a Docker Enterprise cluster set up, but the Windows node is not on that cluster. So to deploy to the cluster, we must make sure we have already pushed our images to the DTR. Then we ony need to switch to the UCP UI to make our deployments happen. Click on the UCP button to launch the UCP window.
+Your lab has a Docker Enterprise cluster set up, but the Windows node is not on that cluster. So to deploy to the cluster, we must make sure we have already pushed our images to the DTR. Then we only need to switch to the UCP UI to make our deployments happen. Navigate to your UCP in your web browser. (Yours may be using te IP, such as https://104.248.14.199)
 
 > DTR and UCP have single sign-on support so you don't need to log in again - in a production environment you can also use your existing AD/LDAP login (NTID) for authentication.
 
-Next you'll deploy the application using Docker swarm mode as the orchestrator. The latest version of Docker Enterprise supports Kubernetes, but Windows containers are still in beta with Kubernetes, so we will use swarm mode. 
+Next you'll deploy the application using Docker swarm mode as the orchestrator. We will use swarm mode. 
 
-The application image in DTR is private, only authenticated users can access it. UCP can pull a private image onto all nodes in the cluster. On the left-navigation panel, click _Shared Resources_ and then _Images_. You'll see all the images currently pulled on the cluster. Click _Pull Image_ to pull the app image from DTR:
+The application image in DTR is private, only authenticated users can access it. But UCP can pull a private image onto all nodes in the cluster. On the left-navigation panel, click _Shared Resources_ and then _Images_. You'll see all the images currently pulled on the cluster. Click _Pull Image_ to pull the app image from DTR:
 
 ![](./images/ucp-pull-image.jpg)
 
 Enter your user credentials and the image name **including your full DTR domain**, so in my case I enter:
 
 ```
-104.248.14.199:4443/dockersamples/mta-dev-signup-homepage:v1
+104.248.14.199:4443/sotol-r-us/signup-homepage:v1
 ```
 ![Pulling DTR image in UCP](./images/ucp-pull-image-2.jpg)
 
