@@ -159,34 +159,36 @@ Let's take a minute to notice that the Windows machine you are using in this lab
 While the images are building, have a look at the Dockerfile for the Web application in "docker/web". You'll see there are two stages. The first stage compiles the application using MSBuild:
 
 ```Dockerfile
-FROM dockersamples/mta-dev-web-builder:3.5 AS builder
+FROM microsoft/dotnet-framework:4.7.2-sdk AS builder
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
-WORKDIR C:\src\SignUp.Web
-COPY src\SignUp C:\src
+WORKDIR C:\src
+COPY src\SignUp .
 RUN .\build.ps1
 ```
 
-The `dockersamples/mta-dev-web-builder:3.5` image was a build-server image made just for this course. It has .NET 3.5, MSBuild, NuGet and the Web Deploy packages installed, so it has the full toolchain to compile an ASP.NET 3.5 application.
+This `builder` stage uses the `microsoft/dotnet-framework:4.7.2-sdk` image, which has the entire .NET 4.7.2 Software Development Kit toolchain needed to compile an ASP.NET 4.7.2 application (including MSBuild, NuGet, and the Web Deploy packages). It is made specifically for cases like our Multi-Stage build.
 
-In the `builder` stage, the Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use.
+>Remember, we don't always need everything used to compile an application when we run an application. A multi-stage build allows us to separate the build process from the running application. Using this method allows our PROD container can be much smaller & more efficent, having only the minimum resources needed to run your app with maximum performance.
 
-The second stage uses the `microsoft/aspnet:3.5` image as the base, which is a Windows Server Core image with IIS and ASP.NET 3.5 already configured:
+The `builder` stage Dockerfile copies the source code into the image and just runs the existing <a href="https://github.com/BrazilPowered/docker-dotnet/blob/1-imagebuilding/src/SignUp/build.ps1" target="_blank">build.ps1</a>) script. When this stage completes, the output is a published website folder, which will be available for later stages to use. 
+
+The second stage uses the `aspnet:4.7.2-windowsservercore-ltsc2016` image as the base, which is a Windows Server Core image with IIS and ASP.NET 4.7.2 already configured:
 
 ```Dockerfile
-FROM microsoft/aspnet:3.5-windowsservercore-10.0.14393.1884
+FROM microsoft/aspnet:4.7.2-windowsservercore-ltsc2016
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
 WORKDIR C:\web-app
 RUN Remove-Website -Name 'Default Web Site'; `
     New-Website -Name 'web-app' -Port 80 -PhysicalPath 'C:\web-app'
 
-COPY --from=builder C:\out\web\SignUpWeb\_PublishedWebsites\SignUp.Web .
+COPY --from=builder C:\out\_PublishedWebsites\SignUp.Web .
 ```
 
-The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage.
+The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage into your new container.
 
-Again, you don't need Visual Studio or IIS installed to run the web app in a container, and you don't need SQL Server installed to run the application database. You'll do it all with Docker. 
+Again, you don't need Visual Studio or IIS installed on your own machine to run the web app in a container, nor do you need SQL Server installed to run the application database. It can all be done with using only Docker.
 
 When the build has finished, we will want to deploy the application using Docker Compose.
 
