@@ -279,7 +279,7 @@ The application is a newsletter sign-up app for Play with Docker. It will take a
 
 Go ahead and fill in the form. When you click _Go_, the data is saved to SQL Server running in a container. The SQL Server container doesn't publish any ports, so it's only accessible to other containers and the Docker API. 
 
-Check that your data is stored by running a PowerShell command in the Windows terminal:
+Check that your data is stored by running a PowerShell command in the Windows terminal. Don't forget to replace `app_signup-db_1` with the name of your db container:
 
 ```s
 docker container exec app_signup-db_1 powershell -Command "Invoke-SqlCmd -Query 'SELECT * FROM Prospects' -Database SignUpDb"
