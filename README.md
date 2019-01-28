@@ -197,13 +197,17 @@ Again, you don't need Visual Studio or IIS installed on your own machine to run 
 
 When the build has finished, we will want to deploy the application using Docker Compose.
 
-Make sure you are in the root ~/docker-dotnet directory you pulled from github and then go ahead and build both those images.:
+Make sure you are in the root `~/Documents/docker-dotnet` directory you pulled from github and then go ahead and build both those images.:
 
 ```s
+cd ~/Documents/docker-dotnet
+
 docker image build -t signup-db:v1 docker/db
 
-docker image build -t signup-app:v1 docker/web
+docker image build -t signup-app:v1 -f docker/web/Dockerfile .
 ```
+
+> Note: The second build command above uses the `-f` (`--file`) option, pointing to the Dockerfile at the location shown thereafter. This is because the Dockerfile being used needs the local context (the `.` at the end) in order to send files from both the directory after `-f` as well as the `src` folder in the top directory.
 
 ##  <a name="2"></a>Task 2: Deploy using Docker-Compose
 
@@ -398,7 +402,7 @@ Extracting a frequently-changing feature from the monolith and running it in a s
 
 Switch to the `3-replacingparts` branch to pull the code pieces we'll need for this:
 
-```.term1
+```s
 git checkout 3-replacingparts
 ```
 Your task is to make a dockerfile for the new <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/index.html" target="_blank">custom hopepage</a> component, and then to modify your compose file to add this new component. 
