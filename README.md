@@ -279,7 +279,7 @@ The application is a newsletter sign-up app for Play with Docker. It will take a
 
 Go ahead and fill in the form. When you click _Go_, the data is saved to SQL Server running in a container. The SQL Server container doesn't publish any ports, so it's only accessible to other containers and the Docker API. 
 
-Check that your data is stored by running a PowerShell command in the Windows terminal:
+Check that your data is stored by running a PowerShell command in the Windows terminal. Don't forget to replace `app_signup-db_1` with the name of your db container:
 
 ```s
 docker container exec app_signup-db_1 powershell -Command "Invoke-SqlCmd -Query 'SELECT * FROM Prospects' -Database SignUpDb"
@@ -316,7 +316,7 @@ Now when users save data, the web app publishes an event to a message queue. A m
 Switch to the `2-performbetter` branch which has the new version of the app, and build it using Docker Compose:
 
 ```s
-git checkout 2-performbetter
+git checkout -f 2-performbetter
 
 docker-compose `
   -f .\app\docker-compose.yml `
@@ -325,7 +325,7 @@ docker-compose `
   build
 ```
 
-> Notice here that *Compose* merges the three input files to spin up your app. The first specifies the structure of the app and the second adds the build details, while the third gives the instructions to build any of the missing components. They're kept separate because they have different concerns, and this keeps them clean. Parts of these can later be combined when making a *stack file*.
+> Notice here that *Compose* merges the three input files given to spin up your app. The first specifies the structure of the app and the second adds the build details, while the third gives the instructions to build any of the missing components. They're kept separate because they have different concerns, and this keeps them clean. Parts of these can later be combined when making a *stack file*.
 
 While it builds, have a look at the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/2-performbetter/docker/web/Dockerfile" target="_blank">new Dockerfile for the web app</a>. The app has been upgraded to use a NuGet repository configured from a file in the packages.config, and then copies the rest of the source code & executes msbuild in a later step. In this way, the builder stage runs the build steps directly in Docker rather than using a manually tracked PowerShell build script:
 
