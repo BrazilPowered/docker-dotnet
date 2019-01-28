@@ -10,11 +10,11 @@ While not required, it is strongly recommended.
 
 In order to perform this lab, you will need to:
 1.	Administrator rights on your machine
-2.  Install Docker-CE for Windows
+2.  Install Docker-Desktop for Windows
 3.	Git for windows
 4.	A non-IE web-browser (optional, but recommended)
 5.	A choice Code Editor (Visual Studios Code is Recommended)
-6.  A Powershell window run as Administrator
+6.  A Powershell window (run as Administrator)
 
 # Moving .NET/Windows Applications to Docker
 
@@ -72,17 +72,21 @@ If you have used this environment for other labs, first remove any existing cont
 docker container rm --force $(docker container ls --quiet --all)
 ```
 
-> To start with you'll work with the Windows node directly, but at the end of the lab you'll deploy to the cluster to see how to run applications in production with Docker Enterprise.
+> Disregard any error stating that "docker container rm requires at least 1 argument" this time around. In this particular case, it means you have no containers on the system.
+
+To start with you'll work with the Windows node directly, but at the end of the lab you'll deploy to the cluster to see how to run applications in production with Docker Enterprise.
 
 ## <a name="1"></a>Task 1: Running the app in a container
 
-You're going to start with an ASP.NET 3.5 WebForms app which is meant to be built in Visual Studio and run in IIS, and instead use Docker to build and run the app in a container.
+You're going to start with an ASP.NET 4.7.2 WebForms app which is meant to be built in Visual Studio and run in IIS. Rather than set up a unique environment, we will use Docker to build and run the app in a container.
 
 You can package Windows server applications to run in Docker using existing deployment tools (like MSIs), or from source code. In this task you'll compile and package an ASP.NET app from source using Docker.
 
 Start by cloning the Git repository for the sample app:
 
 ```.term1
+cd ~/Documents
+
 git clone https://github.com/BrazilPowered/docker-dotnet
 
 cd docker-dotnet
@@ -128,7 +132,7 @@ ENV ACCEPT_EULA="Y" `
 VOLUME ${DATA_PATH}
 
 WORKDIR C:\init
-COPY docker\db .
+COPY . .
 
 CMD ./init.ps1 -sa_password $env:sa_password -Verbose
 
@@ -146,7 +150,7 @@ This Dockerfile pulls 8 layers:
 1.  The base image uses mssql-server-windows-express version 2016-sp1
 2.  It sets the execution environment to be powershell, enabling special functionality like a "SilentlyContinue" to the SQL-Server setup
 3.  It creates 3 environment variables: 1 meets the requirement of accepting an EULA, 2 sets the DB password, and 3 sets the path all the SQL server data will be stored, which is important for when:
-4.  It defines a volume to be at a path pulled from the ENV set above, keeping all the DB data persistent
+4.  It defines a volume to be at a path pulled from that same path in the ENV set above, keeping all the DB data persistent
 5.  It sets a working directory for copying and executing all the files and scripts for this image
 6.  It copies the files in the docker/db folder to the working directory in the container (".")
 7.  It executes the init.ps1 script with an array of required arguments
@@ -154,8 +158,9 @@ This Dockerfile pulls 8 layers:
 
 Healthchecks are vital to your application's lifecycle in a production container environment. While Docker can detect when your container fails, it doesn't know how your app works; so if your web application has an error that kills your user access, but leaves the server up and running, Docker will keep the container running in a 'healthy' state. To prevent this problem, Healthchecks can be used to alert Docker when normal functionality is broken, giving you the chance to enable automatic actions, or receive messages yourself. Never deploy to PROD without a solid healthcheck that you understand.
 
-Let's take a minute to notice that the Windows machine you are using in this lab doesn't need to have SQL Server, Visual Studio or even MSBuild installed - every step in the build process happens inside containers, using images which are packaged with the build toolchain.
+> Let's take a minute to notice that the Windows machine you are using in this lab doesn't need to have SQL Server, Visual Studio or even MSBuild installed - every step in the build process happens inside containers, using images which are packaged with the build toolchain.
 
+#### Examine your web-app Dockerfile
 While the images are building, have a look at the Dockerfile for the Web application in "docker/web". You'll see there are two stages. The first stage compiles the application using MSBuild:
 
 ```Dockerfile
@@ -188,16 +193,16 @@ COPY --from=builder C:\out\_PublishedWebsites\SignUp.Web .
 
 The `RUN` command sets up the website using PowerShell. The `COPY` instruction copies the published website from the builder stage into your new container.
 
-Again, you don't need Visual Studio or IIS installed on your own machine to run the web app in a container, nor do you need SQL Server installed to run the application database. It can all be done with using only Docker.
+Again, you don't need Visual Studio or IIS installed on your own machine to run the web app in a container, nor do you need SQL Server installed to run the application database. It will all be done using only Docker.
 
 When the build has finished, we will want to deploy the application using Docker Compose.
 
 Make sure you are in the root ~/docker-dotnet directory you pulled from github and then go ahead and build both those images.:
 
 ```s
-docker image build -t signup-db:v1 /docker/db
+docker image build -t signup-db:v1 docker/db
 
-docker image build -t signup-app:v1 /docker/web
+docker image build -t signup-app:v1 docker/web
 ```
 
 ##  <a name="2"></a>Task 2: Deploy using Docker-Compose
@@ -246,9 +251,9 @@ Let's deploy the application using Docker Compose:
 docker-compose up -d
 ```
 
-Docker Compose will start containers for the database and the web app. The compose file configures the services, using the database image and the application image you've just built.
+Docker Compose will start containers for the database and the web app. The compose file configures the services using the database image and the application image you've just built.
 
-When the `docker-compose` command completes, your application is running in Docker, in Windows containers on the Windows node. You can see all the running containers:
+When the `docker-compose` command completes, your application is running in Docker, in Windows containers, on the Windows node. You can see all the running containers:
 
 ```s
 docker container ls
@@ -268,7 +273,7 @@ The application is a newsletter sign-up app for Play with Docker. It will take a
 
 Go ahead and fill in the form. When you click _Go_, the data is saved to SQL Server running in a container. The SQL Server container doesn't publish any ports, so it's only accessible to other containers and the Docker API. 
 
-Check your data is stored by running a PowerShell command in the Windows terminal:
+Check that your data is stored by running a PowerShell command in the Windows terminal:
 
 ```s
 docker container exec app_signup-db_1 powershell -Command "Invoke-SqlCmd -Query 'SELECT * FROM Prospects' -Database SignUpDb"
@@ -288,6 +293,6 @@ Role_RoleCode       : DA
 Country_CountryCode : GBR
 ```
 
-> The app is running fine in Docker, with no code changes from the original ASP.NET 3.5 codebase. The Dockerfile has all the logic to build and package the app, so any developer and all the CI servers can build and run the app from source - the only dependency is Docker.
+> The app is running fine in Docker, with no code changes from the original ASP.NET 4.7.2 codebase. The Dockerfile has all the logic to build and package the app, so any developer (and all the CI servers) can build and run the app from source - the only dependency is Docker.
 
 Next you'll go on to modernize the app, fixing some issues with the current architecture.
