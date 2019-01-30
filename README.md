@@ -51,13 +51,13 @@ This is a hybrid cluster, with Linux and Windows nodes. This workshop is designe
 people attending an in-person workshop, but Steps 1-5 of this lab can be completed on your local 
 machine, and then later pushed to Jabil's Docker Environmentvfor Step 6.
 
-The left-hand navigation lists all the features avaiable to this UCP. Click on 'Shared Resources' 
+The left-hand navigation lists all the features available to this UCP. Click on 'Shared Resources' 
 and then 'Nodes' to see all the environments in this Swarm. You should see a list of hostnames, 
 with the corresponding role (of manager or worker), and with at least 1 worker that has Windows 
 under OS/Arch. This is required for Step 6 to work. That will be the Windows worker node on the 
 Swarm where this app will run when complete.
 
-![Windows terminal in Play with Docker](./images/pwd-windows-terminal.jpg)
+![UCP Dashboard in Docker EE](./readme-img/1-ucp-dashboard.png)
 
 For this lab, we will need to use Powershell. Make sure Docker is running on your environment- 
 it runs as a background Windows Service:
@@ -269,11 +269,11 @@ The HTTP port for the web container is published so the app is available to the 
 
 > To see the app running, navigate to your IP address in a local web browser. Since the container was mapped to port `80`, we won't have to specify a port number.)
 
-![PWD Session Information](./images/windows-session.jpg)
+![Navigate in Browser](./readme-img/2-browser-navigate.png)
 
 The application is a newsletter sign-up app for Play with Docker. It will take a little while to load because the app uses Entity Framework and on startup it deploys the database schema. The home page has some basic information and link buttons. Click the _Sign Up_ button and you'll see a registration form:
 
-![PWD newsletter sign up page](./images/part-1-signup.jpg)
+![PWD newsletter sign up page](./readme-img/3-signup.png)
 
 > Don't worry, the data you use for this lab only goes to your local DB container, and is never shared anywhere else. It will all be gone once you end the lab and clean up your environment.
 
