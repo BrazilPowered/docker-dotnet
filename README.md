@@ -408,7 +408,7 @@ Switch to the `3-replacingparts` branch to pull the code pieces we'll need for t
 git checkout -f 3-replacingparts
 ```
 
-Your task is to make a dockerfile for the new <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/index.html" target="_blank">custom hopepage</a> component, and then to modify your compose file to add this new component. 
+In this part, other developers have already made the code changes to pull the homepage into it's own service. Your task is to make a dockerfile for this new <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/docker/homepage/index.html" target="_blank">custom hopepage</a> component, and then to modify your compose file to add this new component. 
 
 The Dockerfile for the homepage can be very simple, with only the following requirements:
 
@@ -416,7 +416,7 @@ The Dockerfile for the homepage can be very simple, with only the following requ
 2.  Use an iis image for your Base Layer, the nanoserver-sac2016 version
 3.  Copy the contents of this folder (the homepage and its images) to the IIS published directory on the container (C:\inetpub\wwwroot). Make sure to include the full path from the project root directory (./docker/homepage) so that you can build this image from there.
 
-Two things are required to pull this off. The first is simple: package a static HTML file on top of a server image, in this case the `microsoft/iis` image running in Nano Server. The second is to perform the code change in the ASP.NET app, modifying the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> to load the homepage content from the new component.
+Codewise, only two things are required to pull this off. The first is simple: package a static HTML file on top of a server image, in this case the `microsoft/iis` image running in Nano Server. The second is to perform the code change in the ASP.NET app, modifying the <a href="https://github.com/BrazilPowered/docker-dotnet/blob/3-replacingparts/src/SignUp/SignUp.Web/Default.aspx.cs" target="_blank">Default.aspx.cs codebehind</a> to load the homepage content from the new component. You can use what the developers did here as an example in your own ASP.NET apps:
 
 ```cs
 namespace SignUp.Web
@@ -445,12 +445,12 @@ namespace SignUp.Web
 }
 ```
 
-Let's rebuild build these images. Since we only made changes to the app and new homepage component, we wil only need to build those.
+Since we have made changes to the code which make up our existing app image, Let's rebuild it, along with the new image for our homepage service. Since we only made changes to the app and new homepage component, we will only need to build those two.
 
 ```s
-docker image build -t signup-app:v1 /docker/web
+docker image build -t signup-app:v4 -f docker/web/Dockerfile .
 
-docker image build -t signup-homepage:v1 /docker/homepage
+docker image build -t signup-homepage:v1 -f docker/homepage/Dockerfile .
 ```
 
 Now, we modify our docker-compose file to use this new component
@@ -469,12 +469,10 @@ Adding this at the bottom of the second docker-compose.yml file should accomplis
 
 Now if we start the app with docker-compose, we should see the new homepage service working as expected:
 
-```.term1
-docker-compose `
-  -f .\docker-compose.yml `
-  -f .\docker-compose-local.yml `
-  up -d
+```s
+docker-compose up -d
 ```
+> Note that we have condensed the compose files to a single yml file. This makes it easier to prepare the yml for deployment in a production environment. (We can continue to use the docker-compose build process using the multiple yml files in our app folder when we continue development at a later time.)
 
 You'll see that a new homepage container gets started, and the web app container gets replaced with a new container. 
 
@@ -482,7 +480,7 @@ The new version is available on your same Windows Docker host. Navigate to the w
 
 Now when the ASP.NET web container receives a request, it calls out to the homepage container across the docker app-net netwoprk which renders the new homepage. That new homepage is a modern UI written in Vue.js:
 
-![Part 5 app homepage](./images/part-5-homepage.JPG)
+![New homepage for the app](./readme-img/6-newhome.png)
 
 If the product team doesn't like the new UI, they can easily replace it by building a new homepage and replacing the homepage container. The web app container doesn't need to change, so there are no regression tests to run.
 
