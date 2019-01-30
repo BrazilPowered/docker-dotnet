@@ -480,7 +480,7 @@ The new version is available on your same Windows Docker host. Navigate to the w
 
 Now when the ASP.NET web container receives a request, it calls out to the homepage container across the docker app-net netwoprk which renders the new homepage. That new homepage is a modern UI written in Vue.js:
 
-![Part 5 app homepage](./images/part-5-homepage.JPG)
+![New homepage for the app](./readme-img/6-newhome.png)
 
 If the product team doesn't like the new UI, they can easily replace it by building a new homepage and replacing the homepage container. The web app container doesn't need to change, so there are no regression tests to run.
 
