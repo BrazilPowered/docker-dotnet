@@ -469,12 +469,13 @@ Adding this at the bottom of the second docker-compose.yml file should accomplis
 
 Now if we start the app with docker-compose, we should see the new homepage service working as expected:
 
-```.term1
+```s
 docker-compose `
   -f .\docker-compose.yml `
   -f .\docker-compose-local.yml `
   up -d
 ```
+> Note: you may see a file called run-local.ps1, which contains a powershell script running the above command. Use this as an example of how you can start to automate your use of container groups on your local machine.
 
 You'll see that a new homepage container gets started, and the web app container gets replaced with a new container. 
 
