@@ -225,7 +225,7 @@ We need to write a docker-compose file (remember: it's a YAML file) with the fol
 ### How should the Docker-Compose file look?
 Here's what the docker-compose fole should look like when complete:
 
-> PLEASE ATTEMPT THIS EXERCISE ON YOUR OWN USING THE REQUIREMNTS ABOVE BEFORE REVIEWING THE FILE BELOW
+> Please attempt this exercise on your own using the requiremnts above before reviewing the file below
 
 ```yml
 version: '3.3'
